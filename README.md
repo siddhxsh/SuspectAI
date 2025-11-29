@@ -17,6 +17,17 @@ Suspect.AI — Browser extension + AI pipeline that detects misinformation and h
 
 People consume news from YouTube & social media where sensational claims and clickbait spread misinformation. Manual fact-checking is slow, confusing, and inaccessible for everyday viewers.
 
+
+## ⚙️ How It Works (Under the Hood)
+1. User clicks Analyze this site
+2. The extension/Webhook sends metadata and content to n8n
+3. Gemini extracts claims and classifies them
+4. Tavily Search API finds real-world evidence
+5. Gemini verifies each claim as **Supported / Refuted / Unclear**
+6. Results returned as JSON with confidence, explanation & evidence links
+
+
+
 💡 Solution
 
 Suspect.AI automates fact-checking. It extracts claims from videos, verifies them with real sources using AI search + LLM reasoning, and returns verdicts: Supported / Refuted / Unclear with evidence & confidence.
@@ -61,3 +72,9 @@ Helps students & educators verify information
 Saves time for researchers and creators
 
 Reduces misinformation spread
+
+## 🏆 Why SuspectAI
+Misinformation scales faster than truth. We help audiences verify content — instantly and objectively.
+Our prototype shows real-time claim extraction + factual verification using AI + live web evidence.
+This can transform journalism, education policy, research & media literacy at scale.
+
