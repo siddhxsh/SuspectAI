@@ -1,0 +1,601 @@
+{
+  "name": "SuspectAI",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "suspectai",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -704,
+        192
+      ],
+      "id": "1a8f178e-c104-41a7-ae9f-904814f631e5",
+      "name": "Webhook",
+      "webhookId": "877a252e-e1d0-420e-bca0-b6fd03998adf"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = items[0].json;\n\nconst text = (item.extracted_text || \"\").slice(0, 8000);\n\nreturn [{\n  json: {\n    ...item,\n    text\n  }\n}];\n\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "2bca619e-b7eb-4f9b-b6e1-77981b4d2fb7",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are the \"Claim Extraction Agent\" in a multi-agent fact-checking system.\n\nYour ONLY job:\n- Read the given article / transcript.\n- Extract concise, checkable factual claims.\n- Return them in a strict JSON format for other agents to use later.\n\nGuidelines for claims:\n- A claim must be something that can be verified TRUE or FALSE.\n- Keep each claim as atomic as possible (one fact per claim).\n- Ignore pure opinions, vague sentiments, or generic statements like \"this is important\".\n- Skip very trivial facts like \"the sky is blue\" unless they are central to the text.\n- Prefer claims about events, numbers, causes, comparisons, or strong assertions.\n\nOutput rules:\n- Output ONLY valid JSON. No explanation text, no markdown, no backticks.\n- Follow this EXACT structure:\n\n{\n  \"title\": \"<copied or cleaned version of the title>\",\n  \"num_claims\": <int>,\n  \"claims\": [\n    {\n      \"id\": 1,\n      \"claim_text\": \"…\",\n      \"category\": \"event\" | \"statistic\" | \"cause-effect\" | \"prediction\" | \"other\",\n      \"importance\": \"high\" | \"medium\" | \"low\",\n      \"source_snippet\": \"short snippet or sentence from the text where this claim appears\"\n    }\n  ]\n}\n\nWhere:\n- \"id\" is a 1-based index.\n- \"claim_text\" should be clear, self-contained, and under ~200 characters.\n- \"source_snippet\" is copied or lightly cleaned from the original text.\n- \"num_claims\" must equal claims.length.\n\nNow extract claims from this content:\n\nTITLE:\n{{$json[\"title\"]}}\n\nURL:\n{{$json[\"url\"]}}\n\nTEXT:\n{{$json[\"text\"]}}\n"
+            }
+          ]
+        },
+        "simplify": false,
+        "jsonOutput": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        1184,
+        240
+      ],
+      "id": "5db28694-1211-4c5d-9f25-f46a28375e05",
+      "name": "Message a model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "QWgP2txaCwo7xqNx",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Full raw output from Gemini\nconst raw = items[0].json || {};\n\n// 1) Try to get the text string where Gemini put our JSON\nlet text = raw.text;\n\n// Fallback: Gemini style nested structure\nif (!text && raw.candidates && raw.candidates[0]?.content?.parts?.[0]?.text) {\n  text = raw.candidates[0].content.parts[0].text;\n}\n\n// Safety check\nif (!text || typeof text !== 'string') {\n  return [\n    {\n      json: {\n        title: \"\",\n        num_claims: 0,\n        claims: [],\n        error: \"Gemini did not return a usable text string\",\n        debug_raw: raw\n      }\n    }\n  ];\n}\n\n// 2) Clean up the text (trim, remove code fences if any)\nlet rawText = text.trim();\n\n// Remove ``` fences if present\nif (rawText.startsWith('```')) {\n  const firstFenceEnd = rawText.indexOf('```', 3);\n  if (firstFenceEnd !== -1) {\n    rawText = rawText.slice(firstFenceEnd + 3).trim();\n  }\n}\nif (rawText.endsWith('```')) {\n  rawText = rawText.slice(0, rawText.lastIndexOf('```')).trim();\n}\n\n// 3) Extract JSON between first '{' and last '}'\nconst firstBrace = rawText.indexOf('{');\nconst lastBrace = rawText.lastIndexOf('}');\n\nif (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {\n  return [\n    {\n      json: {\n        title: \"\",\n        num_claims: 0,\n        claims: [],\n        error: \"Could not locate JSON braces in Gemini output\",\n        debug_raw_text: rawText\n      }\n    }\n  ];\n}\n\nconst jsonCandidate = rawText.slice(firstBrace, lastBrace + 1);\n\n// 4) Parse JSON\nlet extraction;\ntry {\n  extraction = JSON.parse(jsonCandidate);\n} catch (e) {\n  return [\n    {\n      json: {\n        title: \"\",\n        num_claims: 0,\n        claims: [],\n        error: \"Failed to parse extraction JSON: \" + e.message,\n        debug_raw_text: rawText,\n        debug_json_candidate: jsonCandidate\n      }\n    }\n  ];\n}\n\n// 5) Normalize\nif (!Array.isArray(extraction.claims)) {\n  extraction.claims = [];\n}\nextraction.num_claims = extraction.claims.length;\nif (typeof extraction.title !== 'string') {\n  extraction.title = \"\";\n}\n\n// 6) Pass clean object to next node\nreturn [\n  {\n    json: extraction\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -416,
+        496
+      ],
+      "id": "4174821d-a579-47e6-ae3c-eb03aeae2724",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const extraction = items[0].json || {};\nconst claims = extraction.claims || [];\n\nconst results = [];\n\nfor (const claim of claims) {\n  results.push({\n    json: {\n      // keep article context\n      article_title: extraction.title || \"\",\n      article_num_claims: extraction.num_claims || claims.length || 0,\n\n      // claim details\n      claim_id: claim.id,\n      claim_text: claim.claim_text,\n      category: claim.category,\n      importance: claim.importance,\n      source_snippet: claim.source_snippet\n    }\n  });\n}\n\nreturn results;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -128,
+        496
+      ],
+      "id": "53494f69-7c66-4069-9746-18f1935283a1",
+      "name": "Code in JavaScript2"
+    },
+    {
+      "parameters": {
+        "jsCode": "const out = [];\n\nfor (let i = 0; i < items.length; i++) {\n  const j = items[i].json;\n\n  const results = j.results || [];\n\n  const simplified = results.map(r => ({\n    title: r.title || \"\",\n    url: r.url || \"\",\n    snippet: r.content || \"\",\n    score: r.score || null\n  }));\n\n  out.push({\n    json: {\n      // we reconstruct claim_id from position; 1-based\n      claim_id: i + 1,\n      claim_text: j.query || \"\",\n      search_results: simplified\n    }\n  });\n}\n\nreturn out;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1008,
+        496
+      ],
+      "id": "838447f9-8b2c-4547-9b92-8222a4da14c9",
+      "name": "Prepare Search Results"
+    },
+    {
+      "parameters": {
+        "jsCode": "const parsed = [];\n\n// 1) Parse each Gemini item\nfor (const item of items) {\n  const j = item.json;\n\n  // Get the text string from Gemini\n  const text = j.candidates?.[0]?.content?.parts?.[0]?.text;\n  if (!text || typeof text !== 'string') continue;\n\n  let raw = text.trim();\n\n  // Strip ``` fences if any\n  if (raw.startsWith('```')) {\n    const firstFenceEnd = raw.indexOf('```', 3);\n    if (firstFenceEnd !== -1) raw = raw.slice(firstFenceEnd + 3).trim();\n  }\n  if (raw.endsWith('```')) {\n    raw = raw.slice(0, raw.lastIndexOf('```')).trim();\n  }\n\n  const firstBrace = raw.indexOf('{');\n  const lastBrace = raw.lastIndexOf('}');\n  if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) continue;\n\n  const jsonCandidate = raw.slice(firstBrace, lastBrace + 1);\n\n  try {\n    const obj = JSON.parse(jsonCandidate);\n    parsed.push(obj);\n  } catch (e) {\n    // skip this one if parsing fails\n    continue;\n  }\n}\n\n// 2) Fallback if nothing parsed\nif (parsed.length === 0) {\n  return [\n    {\n      json: {\n        score_percent: 50,\n        num_claims: 0,\n        claims: [],\n        error: \"No parsed verification results\"\n      }\n    }\n  ];\n}\n\n// 3) Compute suspicion score + normalize claims\nlet totalScore = 0;\nconst claimsOut = [];\n\nparsed.forEach((c, idx) => {\n  // Verdict → numeric weight\n  let weight = 0;\n  if (c.verdict === \"Contradicted\") weight = 1;\n  else if (c.verdict === \"Unverified\") weight = 0.5;\n  else if (c.verdict === \"Supported\") weight = 0;\n\n  const conf = typeof c.confidence === \"number\" ? c.confidence : 0.5;\n  const claimScore = weight * conf;\n  totalScore += claimScore;\n\n  claimsOut.push({\n    id: idx + 1, // we can ignore Gemini's random ids & just re-index\n    claim_text: c.claim_text,\n    verdict: c.verdict,\n    confidence: conf,\n    explanation: c.explanation,\n    evidence: c.evidence || []\n  });\n});\n\nconst avg = totalScore / parsed.length;\nconst score_percent = Math.round(avg * 100);\n\nreturn [\n  {\n    json: {\n      score_percent,\n      num_claims: parsed.length,\n      claims: claimsOut\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1520,
+        496
+      ],
+      "id": "e0eab11f-8f7f-48a6-8798-dde7bd14ad5a",
+      "name": "Aggregate Results"
+    },
+    {
+      "parameters": {
+        "jsCode": "const root = items[0].json || {};\nconst input = root.body || root;\n\nconst url = input.url || \"\";\nconst title = input.title || \"\";\nconst hintType = input.content_type || \"\";\n\nlet modality = \"article\"; // default\n\nif (hintType) {\n  modality = hintType;\n} else if (/youtube\\.com|youtu\\.be/i.test(url) || input.youtube_id) {\n  modality = \"youtube\";\n}\n\nreturn [{\n  json: {\n    url,\n    title,\n    youtube_id: input.youtube_id || null,\n    modality,                        // 👈 Switch reads this\n    extracted_text: input.extracted_text || \"\",\n    timestamp: input.timestamp || new Date().toISOString()\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -496,
+        208
+      ],
+      "id": "223bd1a3-446b-4fb3-8f60-70d75ff7a1b6",
+      "name": "Code in JavaScript3"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{$json[\"modality\"]}}",
+                    "rightValue": "article",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "55ab92cd-997e-4d6f-acb3-b93993a3cd1a"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "4b9e3aa4-59cc-40d8-a997-90263dacfd0f",
+                    "leftValue": "={{$json[\"modality\"]}}",
+                    "rightValue": "youtube",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.3,
+      "position": [
+        -288,
+        192
+      ],
+      "id": "2b06cae2-a2ba-4d69-9d49-03169163946e",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = items[0].json;\nlet youtubeId = item.youtube_id;\n\nif (!youtubeId && item.url) {\n  try {\n    const urlObj = new URL(item.url);\n    youtubeId = urlObj.searchParams.get(\"v\");\n    if (!youtubeId && urlObj.hostname === \"youtu.be\") {\n      youtubeId = urlObj.pathname.slice(1);\n    }\n  } catch (e) {}\n}\n\nreturn [{\n  json: {\n    ...item,\n    youtube_id: youtubeId\n  }\n}];\n\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -80,
+        256
+      ],
+      "id": "0eacc9ff-05c3-4e66-aad6-825f7ebf8f04",
+      "name": "Code in JavaScript4"
+    },
+    {
+      "parameters": {
+        "url": "=https://video.google.com/timedtext?type=track&v={{ $json.youtube_id }}&id=0&lang=en\n",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        112,
+        256
+      ],
+      "id": "eab83b11-abcc-4ef1-bb22-00a25bf3979e",
+      "name": "Get Transcript",
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = items[0].json;\n\nlet transcript = \"\";\n\ntry {\n  if (\n    data.items &&\n    data.items[0] &&\n    data.items[0].transcript &&\n    data.items[0].transcript.transcriptSegments\n  ) {\n    transcript = data.items[0].transcript.transcriptSegments\n      .map(seg => seg.text)\n      .join(\" \");\n  } else {\n    transcript = \"Transcript unavailable or too short.\";\n  }\n} catch (e) {\n  transcript = \"Transcript unavailable or too short.\";\n}\n\nreturn [\n  {\n    json: {\n      ...data,\n      text: transcript.slice(0, 8000),\n      hasTranscript: transcript !== \"Transcript unavailable or too short.\"\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        640,
+        256
+      ],
+      "id": "7215af47-7c6b-447a-8775-5862e6797bcc",
+      "name": "Build Transcript Text"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are a professional fact-checking AI. \nYour job is to analyze a claim and evaluate whether it is supported or refuted by available evidence.\n\n### CLAIM:\n{{ $json.claim_text }}\n\n### EVIDENCE:\n{{ $json.evidence }}\n\nUse only the evidence provided. Do not hallucinate or assume unknown facts. If evidence is insufficient, answer \"Unclear\".\n\n### OUTPUT FORMAT (strict JSON):\n{\n  \"claim\": \"{{ $json.claim_text }}\",\n  \"verdict\": \"Supported | Refuted | Unclear\",\n  \"confidence\": 0-100,\n  \"reason\": \"Short justification based on evidence\"\n}\n"
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        496
+      ],
+      "id": "7cf50772-b5b3-45bd-b6be-b45bbfe974ca",
+      "name": "Message a model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "QWgP2txaCwo7xqNx",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        976,
+        720
+      ],
+      "id": "0572f2b5-2028-47e8-a489-3c5c2f1440d2",
+      "name": "Respond to Webhook1"
+    },
+    {
+      "parameters": {
+        "query": "={{ $json.claim_text }}",
+        "options": {}
+      },
+      "type": "@tavily/n8n-nodes-tavily.tavily",
+      "typeVersion": 1,
+      "position": [
+        784,
+        496
+      ],
+      "id": "6a959c7b-88c1-4a23-9321-f275fdd044bf",
+      "name": "Search",
+      "credentials": {
+        "tavilyApi": {
+          "id": "1kWWaHfS2fYz55Dn",
+          "name": "Tavily account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "=={{ $json.data || '' }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEquals"
+                    },
+                    "id": "f6bcda33-4830-4c22-a8e4-d1ec2bfcfaeb"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "14b98420-3657-43af-8a71-46e277e84065",
+                    "leftValue": "={{ $json.data || '' }}\n",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.3,
+      "position": [
+        320,
+        256
+      ],
+      "id": "f0924f38-f401-40c9-ac5c-e6dd4fbb2bc4",
+      "name": "Switch1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2900af63-49c2-4f2e-8bfa-44365d474db0",
+              "name": "transcript",
+              "value": "No transcript found for this video.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        608,
+        608
+      ],
+      "id": "86780530-b0ee-4445-a20b-d7a051e7c875",
+      "name": "Edit Fields"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Search Results": {
+      "main": [
+        [
+          {
+            "node": "Message a model1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Results": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript3": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code in JavaScript4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript4": {
+      "main": [
+        [
+          {
+            "node": "Get Transcript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Transcript": {
+      "main": [
+        [
+          {
+            "node": "Switch1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Transcript Text": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model1": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search": {
+      "main": [
+        [
+          {
+            "node": "Prepare Search Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Transcript Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "f2c83831-939b-40b7-a2f0-7d6e16782f60",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "6502412ce79620bc480c070827a4dde07c27e4125d4832079917e4f23cd0caaa"
+  },
+  "id": "SNNPzpEJ4VSmVE52",
+  "tags": []
+}
