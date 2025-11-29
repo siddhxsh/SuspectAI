@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Suspect.AI</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header with branding -->
+    <header class="header">
+      <div class="logo">
+        <img src="../icons/icon48.png" alt="Suspect.AI Logo">
+        <h1>Suspect.AI</h1>
+      </div>
+      <p class="tagline">AI-Powered Misinformation Detection</p>
+    </header>
+
+    <!-- Page Info Section -->
+    <section class="page-info">
+      <h2 class="section-title">Current Page</h2>
+      <div id="page-title" class="page-title">Loading...</div>
+      <div id="page-url" class="page-url"></div>
+    </section>
+
+    <!-- Action Button -->
+    <section class="action-section">
+      <button id="analyze-btn" class="analyze-btn">
+        <span class="btn-icon">🔍</span>
+        Analyze Page
+      </button>
+    </section>
+
+    <!-- Status/Loading Section -->
+    <section id="status-section" class="status-section hidden">
+      <div class="loader"></div>
+      <p id="status-text">Analyzing content...</p>
+    </section>
+
+    <!-- Results Section -->
+    <section id="results-section" class="results-section hidden">
+      <h2 class="section-title">Verification Results</h2>
+      
+      <div id="results-container">
+        <!-- Results will be dynamically inserted here -->
+      </div>
+    </section>
+
+    <!-- Error Section -->
+    <section id="error-section" class="error-section hidden">
+      <div class="error-icon">⚠️</div>
+      <p id="error-text">An error occurred</p>
+      <button id="retry-btn" class="retry-btn">Try Again</button>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <p>Powered by AI • <a href="#" id="settings-link">Settings</a></p>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

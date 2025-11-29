@@ -1,0 +1,211 @@
+.results-display {
+  background: var(--bg-secondary);
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.results-title {
+  font-size: 20px;
+  margin-bottom: 20px;
+  color: var(--text-primary);
+}
+
+/* Summary Cards */
+.summary-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.summary-card {
+  background: var(--bg-color);
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+  border: 2px solid transparent;
+  transition: transform 0.2s ease;
+}
+
+.summary-card:hover {
+  transform: translateY(-2px);
+}
+
+.summary-card.supported {
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.summary-card.refuted {
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.summary-card.unclear {
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+.summary-icon {
+  font-size: 24px;
+  margin-bottom: 8px;
+}
+
+.summary-card.supported .summary-icon,
+.summary-card.supported .summary-count {
+  color: var(--success-color);
+}
+
+.summary-card.refuted .summary-icon,
+.summary-card.refuted .summary-count {
+  color: var(--danger-color);
+}
+
+.summary-card.unclear .summary-icon,
+.summary-card.unclear .summary-count {
+  color: var(--warning-color);
+}
+
+.summary-count {
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.summary-label {
+  font-size: 14px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Claims List */
+.claims-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.claim-card {
+  background: var(--bg-color);
+  border-radius: 12px;
+  padding: 20px;
+  border-left: 4px solid transparent;
+}
+
+.claim-card.verdict-supported {
+  border-left-color: var(--success-color);
+}
+
+.claim-card.verdict-refuted {
+  border-left-color: var(--danger-color);
+}
+
+.claim-card.verdict-unclear {
+  border-left-color: var(--warning-color);
+}
+
+.claim-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.claim-number {
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.verdict-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.verdict-badge.supported {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--success-color);
+}
+
+.verdict-badge.refuted {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--danger-color);
+}
+
+.verdict-badge.unclear {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--warning-color);
+}
+
+.claim-text {
+  font-size: 16px;
+  color: var(--text-primary);
+  line-height: 1.5;
+  margin-bottom: 16px;
+  font-style: italic;
+}
+
+.confidence-section {
+  margin-bottom: 16px;
+}
+
+.confidence-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.confidence-bar {
+  height: 6px;
+  background: var(--bg-tertiary);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.confidence-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.evidence-section {
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.evidence-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 600;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.evidence-text {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .summary-cards {
+    grid-template-columns: 1fr;
+  }
+  
+  .summary-card {
+    padding: 16px;
+  }
+  
+  .summary-count {
+    font-size: 28px;
+  }
+}
