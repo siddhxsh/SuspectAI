@@ -1,6 +1,9 @@
 <p align="center">
-  <img src="assets/WhatsApp Image 2025-11-29 at 11.13.33_3cb1bbb1.jpg" alt="SuspectAI Logo" width="180"/>
+  <img src="https://img.shields.io/badge/Status-Prototype%20v0.1-orange?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/AI-Agentic%20Workflow-blue?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Powered%20By-n8n%20%2B%20Gemini-green?style=for-the-badge" />
 </p>
+
 
 <h1 align="center">🚨 SuspectAI — No Cap, Just Facts</h1>
 
@@ -17,6 +20,17 @@ People consume news from YouTube & social media where sensational claims and cli
 💡 Solution
 
 Suspect.AI automates fact-checking. It extracts claims from videos, verifies them with real sources using AI search + LLM reasoning, and returns verdicts: Supported / Refuted / Unclear with evidence & confidence.
+## 🔥 Demo Preview
+
+### 🧠 Workflow Overview (n8n automation pipeline)
+<p align="center">
+  <img src="screenshots/Screenshot 2025-11-29 112901.png" alt="SuspectAI n8n Workflow" width="800"/>
+</p>
+
+### 🧠 Extention
+<p align="center">
+  <img src="screenshots/Screenshot 2025-11-29 113001.png" alt="SuspectAI n8n Workflow" width="800"/>
+</p>
 
 🧠 Tech Stack
 
