@@ -38,7 +38,7 @@ Suspect.AI automates fact-checking. It extracts claims from videos, verifies the
   <img src="screenshots/Screenshot 2025-11-29 112901.png" alt="SuspectAI n8n Workflow" width="800"/>
 </p>
 
-### 🧠 Extention
+### 🧠 Extension
 <p align="center">
   <img src="screenshots/Screenshot 2025-11-29 113001.png" alt="SuspectAI n8n Workflow" width="800"/>
 </p>
