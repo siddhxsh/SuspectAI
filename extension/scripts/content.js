@@ -3,6 +3,9 @@
  * Extracts page content, transcript, and metadata from web pages
  */
 
+// Configuration constants
+const MAX_CONTENT_LENGTH = 10000; // Maximum characters to extract from page content
+
 // Listen for messages from background script or popup
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'extractContent') {
@@ -171,7 +174,7 @@ function extractGenericContent() {
   
   // Limit content length
   const fullContent = parts.join('\n\n');
-  return fullContent.substring(0, 10000); // Limit to 10k characters
+  return fullContent.substring(0, MAX_CONTENT_LENGTH);
 }
 
 // Auto-announce when loaded (for debugging)

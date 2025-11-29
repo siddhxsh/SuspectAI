@@ -117,8 +117,14 @@ function showError(message) {
   resultsSection.classList.add('hidden');
   errorSection.classList.remove('hidden');
   
-  // Provide helpful error messages
-  if (message.includes('fetch') || message.includes('network')) {
+  // Provide helpful error messages based on error type
+  const lowerMessage = message.toLowerCase();
+  const isNetworkError = lowerMessage.includes('failed to fetch') || 
+                         lowerMessage.includes('network') ||
+                         lowerMessage.includes('connection refused') ||
+                         lowerMessage.includes('webhook returned status');
+  
+  if (isNetworkError) {
     errorText.textContent = 'Could not connect to n8n webhook. Make sure n8n is running locally.';
   } else {
     errorText.textContent = message;
