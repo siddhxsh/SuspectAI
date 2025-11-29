@@ -38,7 +38,7 @@ Browser Extension: JavaScript, Manifest V3
 
 Backend Workflow: n8n, Tavily API, Gemini LLM
 
-Web Search + NLP + OCR + ASR + Claim Classification
+Web Search + NLP + Claim Classification
 
 Response via Webhook
 
